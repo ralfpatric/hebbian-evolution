@@ -1,24 +1,25 @@
 import torch as t
 import tqdm
-from evostrat import NormalPopulation, compute_centered_ranks
+from evostrat import NormalPopulation, compute_centered_ranks, MultivariateNormalPopulation
 from torch.multiprocessing import Pool, set_start_method
 from torch.optim import Adam
 
 import util
 from rnn_car import RecurrentCarRacingAgent
+from bipedalagent import BipedalAgent, HebbianBipedalAgent
 
 if __name__ == '__main__':
     set_start_method('spawn')
     train_writer, test_writer = util.get_writers('hebbian')
 
-    agent = RecurrentCarRacingAgent()
+    agent = HebbianBipedalAgent()
     shapes = {k: p.shape for k, p in agent.get_params().items()}
-    population = NormalPopulation(shapes, RecurrentCarRacingAgent.from_params, std=0.1)
+    population = NormalPopulation(shapes, HebbianBipedalAgent.from_params,std=0.1)
 
-    iterations = 30_000
+    iterations = 1200
     pop_size = 200
 
-    optim = Adam(population.parameters(), lr=0.1)
+    optim = Adam(population.parameters(), lr=0.05)
     pbar = tqdm.tqdm(range(iterations))
     for i in pbar:
         optim.zero_grad()
