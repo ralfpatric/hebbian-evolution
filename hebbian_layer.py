@@ -5,14 +5,15 @@ import shapeguard
 
 class HebbianLayer(nn.Module):
 
-    def __init__(self, n_in, n_out, activation_fn, learn_init=False):
+    def __init__(self, n_in, n_out, activation_fn, learn_init, hebbian_update):
         super().__init__()
         self.n_in = n_in
         self.n_out = n_out
         self.learn_init = learn_init
+        self.hebbian_update= hebbian_update
 
         if learn_init:
-            self.W_init = nn.Parameter(t.randn((n_in, n_out)))
+            self.W_init = nn.Parameter(t.randn((n_in, n_out)),requires_grad=False)
             self.W = self.W_init + 0
         else:
             self.W = t.randn((self.n_in, self.n_out))
@@ -33,7 +34,8 @@ class HebbianLayer(nn.Module):
     def forward(self, pre):
         pre.sg((self.n_in,))
         post = self.activation_fn(pre @ self.W).sg((self.n_out,))
-        self.update(pre, post)
+        if self.hebbian_update:
+            self.update(pre, post)
         return post
 
     def update(self, pre, post):

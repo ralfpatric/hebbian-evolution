@@ -13,8 +13,8 @@ class EnvReward(gym.Wrapper):
 
         def step(self,action):
                 obs, reward, done, info = self.env.step(action)
-                for i in range(obs.size):
-                        obs[i] = (1 + obs[i] / (1 + abs(obs[i]))) * 0.5
-                obs= np.append(obs,(1+reward/(1+abs(reward)))*0.5)
+                # for i in range(obs.size):
+                #         obs[i] = (1 + obs[i] / (1 + abs(obs[i]))) * 0.5
+                obs= np.append(obs,reward)
                 return obs,reward, done, info
 
