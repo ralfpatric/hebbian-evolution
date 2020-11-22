@@ -1,5 +1,3 @@
-
-
 from typing import Dict
 import numpy as np
 import gym
@@ -8,6 +6,8 @@ from hebbian_layer import HebbianLayer
 from gym.wrappers import *
 from torch import nn
 from wrappers import EnvReward
+
+from linear_hebbian_layer import LinearHebbianLayer
 
 from evostrat import Individual
 
@@ -18,7 +18,7 @@ class BipedaAgentPolicy(nn.Module):
         self.cnn = nn.Sequential(
             nn.Linear(24,128,bias=False),nn.Tanh(),
             nn.Linear(128,64,bias=False),nn.Tanh(),
-            nn.Linear(64,5,bias=False),nn.Tanh()
+            nn.Linear(64,4,bias=False),nn.Tanh()
         )
 
     def forward(self,observation):
@@ -31,9 +31,11 @@ class HebbianBipedalAgentPolicy(nn.Module):
         super().__init__()
 
         self.cnn=nn.Sequential(
-            HebbianLayer(25,128,nn.Tanh()),
-            HebbianLayer(128,5,nn.Tanh())
+            HebbianLayer(25,128, nn.Tanh()),
+            HebbianLayer(128,64, nn.Tanh()),
+            HebbianLayer(64,4, nn.Tanh()),
         )
+
     def forward(self,observation):
         state =t.tensor(observation,dtype=t.float32)
         return self.cnn(state)
@@ -92,11 +94,11 @@ class HebbianBipedalAgent(Individual):
         done = False
         total_reward=0
         negative_reward=0
-        while not done and negative_reward < 20 :
+        while not done:
             action  = self.action(obs)
             obs, rew,done, info = env.step(action)
             total_reward+=rew
-            negative_reward = negative_reward+1 if rew<-20 else 0
+            ## negative_reward = negative_reward+1 if rew<-20 else 0
             if render:
                 env.render()
         env.close()
@@ -106,5 +108,6 @@ class HebbianBipedalAgent(Individual):
         return self.policy_net.state_dict()
 
     def action(self,observation):
-        out = self.policy_net(observation)
-        return out
+        with t.no_grad():
+            out = self.policy_net(observation)
+            return out

@@ -1,6 +1,8 @@
 from torch import nn
 import torch as t
 import shapeguard
+import numpy as np
+from random import randint
 
 
 class HebbianLayer(nn.Module):
@@ -47,3 +49,5 @@ class HebbianLayer(nn.Module):
                 (C * post[None, :]).sg((self.n_in, self.n_out)) +
                 D
         )
+
+        print(self.W.numpy())
