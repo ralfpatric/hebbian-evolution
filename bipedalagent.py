@@ -78,16 +78,16 @@ class BipedalAgent(Individual):
         return out
 
 
+
+
 class HebbianBipedalAgent(Individual):
-    def __init__(self, environment="BipedalWalker-v3", reward_input=False, hebbian_update=False, learn_init=True):
+    def __init__(self, environment="BipedalWalker-v3",hebbian_update=False, learn_init=True):
 
         self.environment = environment
-        self.reward_input = reward_input
 
-        if reward_input:
-            self.policy_net = HebbianBipedalAgentPolicy(25, 4, learn_init, hebbian_update)
-        else:
-            self.policy_net = HebbianBipedalAgentPolicy(24, 4, learn_init, hebbian_update)
+        self.policy_net = HebbianBipedalAgentPolicy(24, 4, learn_init, hebbian_update)
+
+
 
     def from_params(params: Dict[str, t.Tensor]) -> 'HebbianBipedalAgent':
         agent = HebbianBipedalAgent()
@@ -96,27 +96,77 @@ class HebbianBipedalAgent(Individual):
 
     def fitness(self, render=False) -> float:
         gym.logger.set_level(40)
-
-        if self.reward_input:
-            env = EnvReward(gym.make(self.environment))
-        else:
-            env = gym.make(self.environment)
+        env = gym.make(self.environment)
         # env= gym.make('BipedalWalkerHardcore-v3')
+
         obs = env.reset()  # 24
-        if self.reward_input:
-            obs = np.append(obs, 0);
+
         done = False
         total_reward = 0
         negative_reward = 0
+        speeds = []
         while not done and negative_reward < 20:
             action = self.action(obs)
             obs, rew, done, info = env.step(action)
+            #('Vertical Speed: %s' % obs[2])
+
+            #speeds= np.append(speeds,obs[2])
             total_reward += rew
             negative_reward = negative_reward + 1 if rew < -20 else 0
             if render:
                 env.render()
         env.close()
+        #print("Average speed: %s" % (np.mean(speeds)))
         return total_reward
+
+    def get_params(self) -> Dict[str, t.Tensor]:
+        return self.policy_net.state_dict()
+
+    def action(self, observation):
+        with t.no_grad():
+            out = self.policy_net(observation)
+            return out
+
+
+
+class HebbianRewardBipedalAgent(Individual):
+
+    def __init__(self, environment="BipedalWalker-v3", hebbian_update=False, learn_init=True):
+
+        self.environment = environment
+        self.policy_net = HebbianBipedalAgentPolicy(25, 4, learn_init, hebbian_update)
+
+
+    def from_params(params: Dict[str, t.Tensor]) -> 'HebbianBipedalAgent':
+        agent =  HebbianRewardBipedalAgent()
+        agent.policy_net.load_state_dict(params)
+        return agent
+
+    def fitness(self, render=False) -> float:
+        gym.logger.set_level(40)
+        env = EnvReward(gym.make(self.environment))
+        # env= gym.make('BipedalWalkerHardcore-v3')
+        obs = env.reset()  # 24
+        obs = np.append(obs, 0);
+        done = False
+        total_reward = 0
+        negative_reward = 0
+        speeds = []
+
+        while not done and negative_reward < 40:
+            action = self.action(obs)
+            obs, rew, done, info = env.step(action)
+            total_reward += rew
+            #print('Vertical Speed: %s' % obs[2])
+            speeds = np.append(speeds, obs[2])
+            negative_reward = negative_reward + 1 if rew < -20 else 0
+            if render:
+                env.render()
+        #print("Average speed: %s" % (np.mean(speeds)))
+        env.close()
+        return total_reward
+
+
 
     def get_params(self) -> Dict[str, t.Tensor]:
         return self.policy_net.state_dict()

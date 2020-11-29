@@ -8,7 +8,7 @@ from torch.optim import Adam
 
 import util
 
-from bipedalagent import BipedalAgent, HebbianBipedalAgent
+from bipedalagent import BipedalAgent, HebbianBipedalAgent,HebbianRewardBipedalAgent
 
 
 def main(argv):
@@ -17,7 +17,7 @@ def main(argv):
 
     parser.add_argument('--param_path', type=str, default='None', metavar='',
                         help='Saved parameters')
-    parser.add_argument('--generation', type=int, default=1200, help='# of generations')
+    parser.add_argument('--generation', type=int, default=300, help='# of generations')
     parser.add_argument('--pop_size', type=int, default=200, help='population size')
     parser.add_argument('--environment', type=str, default="BipedalWalker-v3",
                         help='Agent environment')
@@ -32,14 +32,20 @@ def main(argv):
                         help="#of failed generation before switch to hebbian")
     parser.add_argument('--out', type=str, default='None', metavar='',
                         help='The folder name of the training')
+
+
     args = parser.parse_args()
     train_writer = util.get_writers(args.out)
 
-    agent = HebbianBipedalAgent(args.environment,args.reward, learn_init=True, hebbian_update=False)
+    if args.reward:
 
-    shapes = {k: p.shape for k, p in agent.get_params().items()}
-    population = NormalPopulation(shapes, HebbianBipedalAgent.from_params, std=0.1)
-
+        agent = HebbianRewardBipedalAgent(args.environment,learn_init=True, hebbian_update=True)
+        shapes = {k: p.shape for k, p in agent.get_params().items()}
+        population = NormalPopulation(shapes, HebbianRewardBipedalAgent.from_params, std=0.1)
+    else:
+        agent = HebbianBipedalAgent(args.environment, learn_init=True, hebbian_update=True)
+        shapes = {k: p.shape for k, p in agent.get_params().items()}
+        population = NormalPopulation(shapes, HebbianBipedalAgent.from_params, std=0.1)
 
 
     iterations = args.generation
@@ -52,7 +58,7 @@ def main(argv):
 
     numFails = 0
 
-    hebbian = False
+    hebbian = True
     optim = Adam(population.parameters(), lr=0.05)
     pbar = tqdm.tqdm(range(iterations))
     for i in pbar:
@@ -74,15 +80,24 @@ def main(argv):
                 numFails += 1
 
             if (numFailGeneration > 0 and numFails < numFailGeneration) or (args.static_iteration > 0 and i >  args.static_iteration):
-                agent = HebbianBipedalAgent(args.environment,args.reward,True, True)
-                static_population = population
-                shapes = {k: p.shape for k, p in agent.get_params().items()}
-                population = NormalPopulation(shapes, HebbianBipedalAgent.from_params, std=0.1)
+
+                if args.reward:
+                    agent = HebbianRewardBipedalAgent(args.environment,True, True)
+                    static_population = population
+                    shapes = {k: p.shape for k, p in agent.get_params().items()}
+                    population = NormalPopulation(shapes, HebbianRewardBipedalAgent.from_params, std=0.1)
+                else:
+                    agent = HebbianBipedalAgent(args.environment,True, True)
+                    static_population = population
+                    shapes = {k: p.shape for k, p in agent.get_params().items()}
+                    population = NormalPopulation(shapes, HebbianBipedalAgent.from_params, std=0.1)
 
                 population.param_means = {k: p for k, p in zip(agent.get_params().keys(), static_population.parameters())}
-                print("\n Changed to hebbian")
+                print("\n Changed to hebbian after %s iteration" % i)
                 hebbian = True
+        if i % 20 == 0 :
 
+                t.save(population.parameters(), './data/data_%s_%s_%s.t'  % (args.out, i, raw_fitness.mean().item()))
         if raw_fitness.mean() > 299:
             t.save(population.parameters(), 'sol.t')
             break
