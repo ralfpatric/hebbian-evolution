@@ -96,8 +96,9 @@ def main(argv):
                 print("\n Changed to hebbian after %s iteration" % i)
                 hebbian = True
         if i % 20 == 0 :
-
-                t.save(population.parameters(), './data/data_%s_%s_%s.t'  % (args.out, i, raw_fitness.mean().item()))
+                filename = ('data_%s_%s_%s.t' % (args.out, i, raw_fitness.mean().item()))
+                t.save(population.parameters(),filename);
+                util.upload_files("train/",filename);
         if raw_fitness.mean() > 299:
             t.save(population.parameters(), 'sol.t')
             break
