@@ -6,7 +6,7 @@ import torch as t
 from hebbian_layer import HebbianLayer
 from gym.wrappers import *
 from torch import nn
-from wrappers import EnvReward
+from wrappers import EnvReward,SpeedLimitReward
 
 from evostrat import Individual
 
@@ -87,8 +87,7 @@ class HebbianBipedalAgent(Individual):
 
         self.policy_net = HebbianBipedalAgentPolicy(24, 4, learn_init, hebbian_update)
 
-
-
+    @staticmethod
     def from_params(params: Dict[str, t.Tensor]) -> 'HebbianBipedalAgent':
         agent = HebbianBipedalAgent()
         agent.policy_net.load_state_dict(params)
@@ -136,8 +135,8 @@ class HebbianRewardBipedalAgent(Individual):
         self.environment = environment
         self.policy_net = HebbianBipedalAgentPolicy(25, 4, learn_init, hebbian_update)
 
-
-    def from_params(params: Dict[str, t.Tensor]) -> 'HebbianBipedalAgent':
+    @staticmethod
+    def from_params(params: Dict[str, t.Tensor]) -> 'HebbianRewardBipedalAgent':
         agent =  HebbianRewardBipedalAgent()
         agent.policy_net.load_state_dict(params)
         return agent
@@ -165,6 +164,66 @@ class HebbianRewardBipedalAgent(Individual):
         #print("Average speed: %s" % (np.mean(speeds)))
         env.close()
         return total_reward
+
+
+
+    def get_params(self) -> Dict[str, t.Tensor]:
+        return self.policy_net.state_dict()
+
+    def action(self, observation):
+        with t.no_grad():
+            out = self.policy_net(observation)
+
+            return out
+
+class HebbianSPBipedalAgent(Individual):
+
+    def __init__(self, environment="BipedalWalker-v3",hebbian_update=False, learn_init=False,):
+
+        self.environment = environment
+        self.policy_net = HebbianBipedalAgentPolicy(25, 4, learn_init, hebbian_update)
+
+
+    def from_params(params: Dict[str, t.Tensor]) -> 'HebbianSPBipedalAgent':
+        agent =  HebbianSPBipedalAgent()
+        agent.policy_net.load_state_dict(params)
+        return agent
+
+    def run(self,render):
+
+        obs = self.env.reset()  # 24
+        obs = np.append(obs, 0);
+        done = False
+        total_reward = 0
+        negative_reward = 0
+        speeds = []
+
+        while not done and negative_reward < 40:
+            action = self.action(obs)
+            obs, rew, done, info = self.env.step(action)
+            total_reward += rew
+            # print('Vertical Speed: %s' % obs[2])
+            speeds = np.append(speeds, obs[2])
+            negative_reward = negative_reward + 1 if rew < -20 else 0
+            if render:
+                self.env.render()
+        # print("Average speed: %s" % (np.mean(speeds)))
+        self.env.close()
+        return total_reward
+
+    def fitness(self, render=False) -> float:
+        gym.logger.set_level(40)
+        fitness_values=[]
+        self.env = SpeedLimitReward(gym.make(self.environment),speed=0.25)
+        value = self.run(render)
+        fitness_values= np.append(fitness_values,value)
+        self.env = SpeedLimitReward(gym.make(self.environment), speed=0.3)
+        value = self.run(render)
+        fitness_values=np.append(fitness_values,value)
+
+        return fitness_values.mean()
+
+
 
 
 

@@ -1,7 +1,7 @@
 import torch as t
 
 from evostrat import NormalPopulation
-from bipedalagent import HebbianBipedalAgent, BipedalAgent, HebbianRewardBipedalAgent
+from bipedalagent import HebbianBipedalAgent, BipedalAgent,HebbianSPBipedalAgent
 
 import argparse
 
@@ -14,9 +14,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
 
-    agent = HebbianRewardBipedalAgent(hebbian_update=True,learn_init=True)
+    agent = HebbianSPBipedalAgent(hebbian_update=True,learn_init=True)
     shapes = {k: p.shape for k, p in agent.get_params().items()}
-    population = NormalPopulation(shapes, HebbianRewardBipedalAgent.from_params, std=0.1)
+    population = NormalPopulation(shapes, HebbianSPBipedalAgent.from_params, std=0.1)
     params = t.load(args.input)
     population.param_means = {k: p for k, p in zip(agent.get_params().keys(), params)}
     inds, logps = zip(*population.sample(2))

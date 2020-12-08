@@ -19,7 +19,29 @@ class EnvReward(gym.Wrapper):
                 # for i in range(obs.size):
                 #         obs[i] = (1 + obs[i] / (1 + abs(obs[i]))) * 0.5
 
-                reward=self.norm.pdf(obs[2])*reward
+                #eward=self.norm.pdf(obs[2])*reward
                 obs= np.append(obs,reward)
                 return obs,reward, done, info
 
+
+class SpeedLimitReward(gym.Wrapper):
+
+        def __init__(self,env,speed):
+                super().__init__(env)
+                self.env=env
+                self.mean=speed
+                self.std = 0.1
+                self.norm= stats.norm(self.mean,self.std)
+                self.observation_space=gym.spaces.Box(float('-inf'),float('inf'),shape=(25,),dtype=np.float32)
+
+
+
+        def step(self,action):
+                obs, reward, done, info = self.env.step(action)
+                # for i in range(obs.size):
+                #         obs[i] = (1 + obs[i] / (1 + abs(obs[i]))) * 0.5
+
+                reward=self.norm.pdf(obs[2])*reward
+                #reward= max(-1, min(reward, 1))
+                obs= np.append(obs,reward)
+                return obs,reward, done, info

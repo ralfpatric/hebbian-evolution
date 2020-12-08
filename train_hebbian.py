@@ -8,7 +8,7 @@ from torch.optim import Adam
 
 import util
 
-from bipedalagent import BipedalAgent, HebbianBipedalAgent,HebbianRewardBipedalAgent
+from bipedalagent import BipedalAgent, HebbianBipedalAgent,HebbianRewardBipedalAgent,HebbianSPBipedalAgent
 
 
 def main(argv):
@@ -21,7 +21,7 @@ def main(argv):
     parser.add_argument('--pop_size', type=int, default=200, help='population size')
     parser.add_argument('--environment', type=str, default="BipedalWalker-v3",
                         help='Agent environment')
-    parser.add_argument('--reward', type=bool, default=False, help='If the agent should use reward as an input')
+    parser.add_argument('--reward', type=bool, default=True, help='If the agent should use reward as an input')
 
     parser.add_argument('--static_iteration', type=int, default=20,
                         help="# of generations trained for static network. If 0, using the max_fitness threshold")
@@ -39,11 +39,11 @@ def main(argv):
 
     if args.reward:
 
-        agent = HebbianRewardBipedalAgent(args.environment,learn_init=True, hebbian_update=True)
+        agent = HebbianSPBipedalAgent(args.environment,learn_init=False, hebbian_update=False)
         shapes = {k: p.shape for k, p in agent.get_params().items()}
-        population = NormalPopulation(shapes, HebbianRewardBipedalAgent.from_params, std=0.1)
+        population = NormalPopulation(shapes, HebbianSPBipedalAgent.from_params, std=0.1)
     else:
-        agent = HebbianBipedalAgent(args.environment, learn_init=True, hebbian_update=True)
+        agent = HebbianBipedalAgent(args.environment, learn_init=True, hebbian_update=False)
         shapes = {k: p.shape for k, p in agent.get_params().items()}
         population = NormalPopulation(shapes, HebbianBipedalAgent.from_params, std=0.1)
 
@@ -58,7 +58,7 @@ def main(argv):
 
     numFails = 0
 
-    hebbian = True
+    hebbian = False
     optim = Adam(population.parameters(), lr=0.05)
     pbar = tqdm.tqdm(range(iterations))
     for i in pbar:
@@ -79,13 +79,13 @@ def main(argv):
             else:
                 numFails += 1
 
-            if (numFailGeneration > 0 and numFails < numFailGeneration) or (args.static_iteration > 0 and i >  args.static_iteration):
+            if (numFailGeneration > 0 and numFails < numFailGeneration) or (args.static_iteration > 0 and i >= args.static_iteration):
 
                 if args.reward:
-                    agent = HebbianRewardBipedalAgent(args.environment,True, True)
+                    agent = HebbianSPBipedalAgent(args.environment,True,False)
                     static_population = population
                     shapes = {k: p.shape for k, p in agent.get_params().items()}
-                    population = NormalPopulation(shapes, HebbianRewardBipedalAgent.from_params, std=0.1)
+                    population = NormalPopulation(shapes, HebbianSPBipedalAgent.from_params, std=0.1)
                 else:
                     agent = HebbianBipedalAgent(args.environment,True, True)
                     static_population = population
